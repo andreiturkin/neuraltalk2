@@ -29,14 +29,14 @@ function tregutils.treg(LSTMweights)
 --    local gamma =  torch.Tensor({17.0/16.0}):cuda()
 --    local lambdaval = torch.Tensor({0.0005}):cuda()
 
-    local zero = torch.Tensor({0.0})
-    local one = torch.Tensor({1.0})
-    local two = torch.Tensor({2.0})
-    local sqrt2 = torch.sqrt(two)
-    local gamma_f = torch.Tensor({0.25})
-    local gamma_i_ci = torch.Tensor({17.0/16.0})
-    local gamma =  torch.Tensor({17.0/16.0})
-    local lambdaval = torch.Tensor({0.05})
+    local zero = torch.Tensor({0.0}):cuda()
+    local one = torch.Tensor({1.0}):cuda()
+    local two = torch.Tensor({2.0}):cuda()
+    local sqrt2 = torch.sqrt(two):cuda()
+    local gamma_f = torch.Tensor({0.25}):cuda()
+    local gamma_i_ci = torch.Tensor({17.0/16.0}):cuda()
+    local gamma =  torch.Tensor({17.0/16.0}):cuda()
+    local lambdaval = torch.Tensor({0.05}):cuda()
 
     local norm_W_ix = torch.sqrt(torch.sum(torch.pow(LSTMweights['W_i'], 2),1))
     local norm_W_ih = torch.sqrt(torch.sum(torch.pow(LSTMweights['U_i'], 2),1))
@@ -181,15 +181,15 @@ function tregutils.getgradparams(params, grad_LSTMparams, opt)
     W_o:copy(grad_LSTMparams['W_o'])
     W_c:copy(grad_LSTMparams['W_c'])
 
-    assert(torch.all(W_i:eq(grad_LSTMparams['W_i']))and
-            torch.all(W_f:eq(grad_LSTMparams['W_f']))and
-            torch.all(W_o:eq(grad_LSTMparams['W_o']))and
-            torch.all(W_c:eq(grad_LSTMparams['W_c'])))
+--    assert(torch.all(W_i:eq(grad_LSTMparams['W_i']))and
+--            torch.all(W_f:eq(grad_LSTMparams['W_f']))and
+--            torch.all(W_o:eq(grad_LSTMparams['W_o']))and
+--            torch.all(W_c:eq(grad_LSTMparams['W_c'])))
 
---    assert(torch.all(W_i:cuda():eq(grad_LSTMparams['W_i']))and
---            torch.all(W_f:cuda():eq(grad_LSTMparams['W_f']))and
---            torch.all(W_o:cuda():eq(grad_LSTMparams['W_o']))and
---            torch.all(W_c:cuda():eq(grad_LSTMparams['W_c'])))
+    assert(torch.all(W_i:cuda():eq(grad_LSTMparams['W_i']))and
+            torch.all(W_f:cuda():eq(grad_LSTMparams['W_f']))and
+            torch.all(W_o:cuda():eq(grad_LSTMparams['W_o']))and
+            torch.all(W_c:cuda():eq(grad_LSTMparams['W_c'])))
     -- LSTM W bias (we don't need it, but need to be sure the grad elements are zeros)
     local LSTMparam2 = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 1, 4*opt.rnn_size)
     assert(torch.sum(LSTMparam2)==0)
@@ -205,15 +205,15 @@ function tregutils.getgradparams(params, grad_LSTMparams, opt)
     U_o:copy(grad_LSTMparams['U_o'])
     U_c:copy(grad_LSTMparams['U_c'])
 
-    assert(torch.all(U_i:eq(grad_LSTMparams['U_i']))and
-            torch.all(U_f:eq(grad_LSTMparams['U_f']))and
-            torch.all(U_o:eq(grad_LSTMparams['U_o']))and
-            torch.all(U_c:eq(grad_LSTMparams['U_c'])))
+--    assert(torch.all(U_i:eq(grad_LSTMparams['U_i']))and
+--            torch.all(U_f:eq(grad_LSTMparams['U_f']))and
+--            torch.all(U_o:eq(grad_LSTMparams['U_o']))and
+--            torch.all(U_c:eq(grad_LSTMparams['U_c'])))
 
---    assert(torch.all(U_i:cuda():eq(grad_LSTMparams['U_i']))and
---            torch.all(U_f:cuda():eq(grad_LSTMparams['U_f']))and
---            torch.all(U_o:cuda():eq(grad_LSTMparams['U_o']))and
---            torch.all(U_c:cuda():eq(grad_LSTMparams['U_c'])))
+    assert(torch.all(U_i:cuda():eq(grad_LSTMparams['U_i']))and
+            torch.all(U_f:cuda():eq(grad_LSTMparams['U_f']))and
+            torch.all(U_o:cuda():eq(grad_LSTMparams['U_o']))and
+            torch.all(U_c:cuda():eq(grad_LSTMparams['U_c'])))
 
     -- LSTM U bias (we don't need it, but need to be sure the grad elements are zeros)
     local LSTMparam4 = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 1, 4*opt.rnn_size)
@@ -265,9 +265,7 @@ function tregutils.getvars(LSTMweights)
     return vartbl
 end
 
-function tregutils.gradchecker_Wfh(dtreg, LSTMweights)
-
-    local vartbl = tregutils.getvars(LSTMweights)
+function tregutils.gradchecker_Wfh(dtreg, LSTMweights, vartbl)
 
     local rho_x_prime_Wfh = (tregutils.consts.sqrt2*tregutils.consts.alpha/vartbl.norm_W_fh)*
                             (1.0 + (tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
@@ -284,9 +282,7 @@ function tregutils.gradchecker_Wfh(dtreg, LSTMweights)
     return dR_dWfh
 end
 
-function tregutils.gradchecker_Wcih(dtreg, LSTMweights)
-
-    local vartbl = tregutils.getvars(LSTMweights)
+function tregutils.gradchecker_Wcih(dtreg, LSTMweights, vartbl)
 
     local rho_x_prime_Wcih = (tregutils.consts.sqrt2*tregutils.consts.beta/vartbl.norm_W_cih)*
                              (1.0 + (tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
@@ -303,9 +299,7 @@ function tregutils.gradchecker_Wcih(dtreg, LSTMweights)
     return dR_dWcih
 end
 
-function tregutils.gradchecker_Wih(dtreg, LSTMweights)
-
-    local vartbl = tregutils.getvars(LSTMweights)
+function tregutils.gradchecker_Wih(dtreg, LSTMweights, vartbl)
 
     local rho_x_prime_Wih = (tregutils.consts.sqrt2*tregutils.consts.beta/vartbl.norm_W_ih)*
                             (1.0 + (tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
@@ -322,9 +316,7 @@ function tregutils.gradchecker_Wih(dtreg, LSTMweights)
     return dR_dWih
 end
 
-function tregutils.gradchecker_Wfx(dtreg, LSTMweights)
-
-    local vartbl = tregutils.getvars(LSTMweights)
+function tregutils.gradchecker_Wfx(dtreg, LSTMweights, vartbl)
 
     local rho_x_prime_Wfx = (tregutils.consts.sqrt2*tregutils.consts.alpha/vartbl.norm_W_fx)*
                             (1.0 + (tregutils.consts.sqrt2*tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
@@ -341,9 +333,7 @@ function tregutils.gradchecker_Wfx(dtreg, LSTMweights)
     return dR_dWfx
 end
 
-function tregutils.gradchecker_Wcix(dtreg, LSTMweights)
-
-    local vartbl = tregutils.getvars(LSTMweights)
+function tregutils.gradchecker_Wcix(dtreg, LSTMweights, vartbl)
 
     local rho_x_prime_Wcix = (tregutils.consts.sqrt2*tregutils.consts.beta/vartbl.norm_W_cix)*
                              (1.0 + (tregutils.consts.sqrt2*tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
@@ -360,9 +350,7 @@ function tregutils.gradchecker_Wcix(dtreg, LSTMweights)
     return dR_dWcix
 end
 
-function tregutils.gradchecker_Wix(dtreg, LSTMweights)
-
-    local vartbl = tregutils.getvars(LSTMweights)
+function tregutils.gradchecker_Wix(dtreg, LSTMweights, vartbl)
 
     local rho_x_prime_Wix = (tregutils.consts.sqrt2*tregutils.consts.beta/vartbl.norm_W_ix)*
                             (1.0 + (tregutils.consts.sqrt2*tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
@@ -379,9 +367,7 @@ function tregutils.gradchecker_Wix(dtreg, LSTMweights)
     return dR_dWix
 end
 
-function tregutils.gradchecker_Wox(dtreg, LSTMweights)
-
-    local vartbl = tregutils.getvars(LSTMweights)
+function tregutils.gradchecker_Wox(dtreg, LSTMweights, vartbl)
 
     local rho_x_prime_Wox = 2.0/(vartbl.norm_W_oh*vartbl.cexp_Woh)
 
@@ -397,10 +383,8 @@ function tregutils.gradchecker_Wox(dtreg, LSTMweights)
     return dR_dWox
 end
 
-function tregutils.gradchecker_Woh(dtreg, LSTMweights)
+function tregutils.gradchecker_Woh(dtreg, LSTMweights, vartbl)
 
-    local vartbl = tregutils.getvars(LSTMweights)
-    
     local rho_h_prime_Woh = (tregutils.consts.sqrt2*tregutils.consts.beta*vartbl.gamma_h/vartbl.cexp_Woh)*
                             (tregutils.consts.beta + 1.0/vartbl.norm_W_oh)
     local rho_x_prime_Woh = tregutils.consts.sqrt2*rho_h_prime_Woh +
@@ -425,18 +409,18 @@ function tregutils.gettreggrads(params, thin_lm, opt)
     local LSTMparams = tregutils.getparameters(params, opt)
     tregutils.checking(thin_lm, LSTMparams, opt)
     
-    local dtreg_by_dLSTMparams = tregutils.treggrad(LSTMparams)
+    --local dtreg_by_dLSTMparams = tregutils.treggrad(LSTMparams)
+    local vartbl = tregutils.getvars(LSTMparams)
     dR_dW = {}
-    dR_dW['W_i'] = tregutils.gradchecker_Wix(dtreg_by_dLSTMparams, LSTMparams)
-    dR_dW['U_i'] = tregutils.gradchecker_Wih(dtreg_by_dLSTMparams, LSTMparams)
-    dR_dW['W_f'] = tregutils.gradchecker_Wfx(dtreg_by_dLSTMparams, LSTMparams)
-    dR_dW['U_f'] = tregutils.gradchecker_Wfh(dtreg_by_dLSTMparams, LSTMparams)
-    dR_dW['W_c'] = tregutils.gradchecker_Wcix(dtreg_by_dLSTMparams, LSTMparams)
-    dR_dW['U_c'] = tregutils.gradchecker_Wcih(dtreg_by_dLSTMparams, LSTMparams)
-    dR_dW['W_o'] = tregutils.gradchecker_Wox(dtreg_by_dLSTMparams, LSTMparams)
-    dR_dW['U_o'] = tregutils.gradchecker_Woh(dtreg_by_dLSTMparams, LSTMparams)
+    dR_dW['W_i'] = tregutils.gradchecker_Wix(dtreg_by_dLSTMparams, LSTMparams, vartbl)
+    dR_dW['U_i'] = tregutils.gradchecker_Wih(dtreg_by_dLSTMparams, LSTMparams, vartbl)
+    dR_dW['W_f'] = tregutils.gradchecker_Wfx(dtreg_by_dLSTMparams, LSTMparams, vartbl)
+    dR_dW['U_f'] = tregutils.gradchecker_Wfh(dtreg_by_dLSTMparams, LSTMparams, vartbl)
+    dR_dW['W_c'] = tregutils.gradchecker_Wcix(dtreg_by_dLSTMparams, LSTMparams, vartbl)
+    dR_dW['U_c'] = tregutils.gradchecker_Wcih(dtreg_by_dLSTMparams, LSTMparams, vartbl)
+    dR_dW['W_o'] = tregutils.gradchecker_Wox(dtreg_by_dLSTMparams, LSTMparams, vartbl)
+    dR_dW['U_o'] = tregutils.gradchecker_Woh(dtreg_by_dLSTMparams, LSTMparams, vartbl)
     tregutils.getgradparams(params, dR_dW, opt)
-    exit()
     assert(tregutils.add_to_grad_params:nElement() == params:nElement())
 end
 
