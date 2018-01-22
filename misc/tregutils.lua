@@ -200,7 +200,7 @@ function tregutils.gradchecker_Wcih(dR_dWcih, vartbl)
 
     local R_wrt_Wcih = 2.0*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wcih/math.pow(vartbl.not_rho_h_sq,2)
     if (math.pow(vartbl.rho_h,2) >= 1.0) then
-        dR_dWfh:apply(function(x) return x*R_wrt_Wcih + tregutils.consts.lambda1*2.0*vartbl.rho_h*rho_h_prime_Wcih*x end)
+        dR_dWcih:apply(function(x) return x*R_wrt_Wcih + tregutils.consts.lambda1*2.0*vartbl.rho_h*rho_h_prime_Wcih*x end)
     else
         dR_dWcih:apply(function(x) return x*R_wrt_Wcih end)
     end
@@ -212,7 +212,7 @@ function tregutils.gradchecker_Wih(dR_dWih, vartbl)
                             (1.0 + (tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
     local R_wrt_Wih = 2.0*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wih/math.pow(vartbl.not_rho_h_sq,2)
     if (math.pow(vartbl.rho_h,2) >= 1.0) then
-        dR_dWfh:apply(function(x) return x*R_wrt_Wih + tregutils.consts.lambda1*2.0*vartbl.rho_h*rho_h_prime_Wih*x end)
+        dR_dWih:apply(function(x) return x*R_wrt_Wih + tregutils.consts.lambda1*2.0*vartbl.rho_h*rho_h_prime_Wih*x end)
     else
         dR_dWih:apply(function(x) return x*R_wrt_Wih end)
     end
