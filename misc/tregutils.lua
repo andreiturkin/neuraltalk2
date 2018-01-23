@@ -88,52 +88,41 @@ function tregutils.getparameters(params, thin_lm, opt)
     return LSTMparam
 end
 
-function tregutils.checking(thin_lm, LSTMparam, opt)
+function tregutils.checking(thin_lm, opt, iW_i, iU_i, iW_f, iU_f, iW_c, iU_c, iW_o, iU_o)
+    -- Parameters from the layer
+    local W_i, W_f, W_o, W_c, U_i, U_f, U_o, U_c
     -- Getting Language Model Parameters
     local p1,_ = thin_lm.core:parameters()
     --W_size = (ipt_size) x (4 * rnn_size)
     --U_size = (rnn_size) x (4 * rnn_size)
-    local LSTMparam_layer = {}
     for i, v in pairs(p1) do
         if i == 1 then
-            local W_i = v:sub(1,opt.rnn_size)
-            LSTMparam_layer['W_i'] = W_i
-            local W_f = v:sub(opt.rnn_size+1,2*opt.rnn_size)
-            LSTMparam_layer['W_f'] = W_f
-            local W_o = v:sub(2*opt.rnn_size+1,3*opt.rnn_size)
-            LSTMparam_layer['W_o'] = W_o
-            local W_c = v:sub(3*opt.rnn_size+1,4*opt.rnn_size)
-            LSTMparam_layer['W_c'] = W_c
+            W_i = v:sub(1,opt.rnn_size)
+            W_f = v:sub(opt.rnn_size+1,2*opt.rnn_size)
+            W_o = v:sub(2*opt.rnn_size+1,3*opt.rnn_size)
+            W_c = v:sub(3*opt.rnn_size+1,4*opt.rnn_size)
         end
         if i == 3 then
-            local U_i = v:sub(1,opt.rnn_size)
-            LSTMparam_layer['U_i'] = U_i
-            local U_f = v:sub(opt.rnn_size+1,2*opt.rnn_size)
-            LSTMparam_layer['U_f'] = U_f
-            local U_o = v:sub(2*opt.rnn_size+1,3*opt.rnn_size)
-            LSTMparam_layer['U_o'] = U_o
-            local U_c = v:sub(3*opt.rnn_size+1,4*opt.rnn_size)
-            LSTMparam_layer['U_c'] = U_c
+            U_i = v:sub(1,opt.rnn_size)
+            U_f = v:sub(opt.rnn_size+1,2*opt.rnn_size)
+            U_o = v:sub(2*opt.rnn_size+1,3*opt.rnn_size)
+            U_c = v:sub(3*opt.rnn_size+1,4*opt.rnn_size)
         end
     end
-
-    --print('LSTM parameters from the layer:')
-    --print(LSTMparam_layer)
-
     ---- W
-    assert(torch.all(LSTMparam_layer['W_i']:eq(LSTMparam['W_i']))and
-            torch.all(LSTMparam_layer['W_f']:eq(LSTMparam['W_f']))and
-            torch.all(LSTMparam_layer['W_o']:eq(LSTMparam['W_o']))and
-            torch.all(LSTMparam_layer['W_c']:eq(LSTMparam['W_c'])))
+    assert(torch.all(W_i:eq(iW_i))and
+            torch.all(W_f:eq(iW_f))and
+            torch.all(W_o:eq(iW_o))and
+            torch.all(W_c:eq(iW_c)))
     ---- U
-    assert(torch.all(LSTMparam_layer['U_i']:eq(LSTMparam['U_i']))and
-            torch.all(LSTMparam_layer['U_f']:eq(LSTMparam['U_f']))and
-            torch.all(LSTMparam_layer['U_o']:eq(LSTMparam['U_o']))and
-            torch.all(LSTMparam_layer['U_c']:eq(LSTMparam['U_c'])))
+    assert(torch.all(U_i:eq(iU_i))and
+            torch.all(U_f:eq(iU_f))and
+            torch.all(U_o:eq(iU_o))and
+            torch.all(U_c:eq(iU_c)))
 end
 
 --
-function tregutils.getgradparams(opt)
+function tregutils.getgradparams(opt, thin_lm)
     -- LSTM W
     local LSTMparam1 = tregutils.add_to_grad_params:narrow(1, 1, 4*opt.input_encoding_size*opt.rnn_size)
 
@@ -158,7 +147,7 @@ function tregutils.getgradparams(opt)
     LSTMparam4:zero()
 
     local vartbl = tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o)
-
+    tregutils.checking(thin_lm, opt, W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o)
     -- Derivative calculation
     -- They replace the parameters that are in tregutils.add_to_grad_params
     tregutils.gradchecker_Wix(W_i, vartbl)
@@ -294,7 +283,7 @@ end
 
 function tregutils.gettreggrads(params, thin_lm, opt)
     tregutils.add_to_grad_params = params:clone()
-    tregutils.getgradparams(opt)
+    tregutils.getgradparams(opt, thin_lm)
     assert(tregutils.add_to_grad_params:nElement() == params:nElement())
 end
 
