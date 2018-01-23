@@ -11,9 +11,9 @@ tregutils.consts = {
     sqrt2 = math.sqrt(2.0),
     alpha = 0.25,
     beta = 17.0/16.0,
-    lambda1 = 0.00005,
-    lambda2 = 0.00001,
-    lambdaval = 0.00005,
+    lambda1 = 0.0001,
+    lambda2 = 0.0001,
+    lambdaval = 0.000005,
 }
 
 function tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o)
@@ -218,6 +218,7 @@ function tregutils.gradchecker_Wih(dR_dWih, vartbl)
     local R1_wrt_Wih = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Wih
 
     if (vartbl.not_rho_h_sq <= 0.0) then
+        print('need to use the the R1 constrain')
         dR_dWih:apply(function(x) return x*(R_wrt_Wih + R1_wrt_Wih) end)
     else
         dR_dWih:apply(function(x) return x*R_wrt_Wih end)
@@ -233,6 +234,7 @@ function tregutils.gradchecker_Wfh(dR_dWfh, vartbl)
     local R1_wrt_Wfh = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Wfh
 
     if (vartbl.not_rho_h_sq <= 0.0) then
+        print('need to use the the R1 constrain')
         dR_dWfh:apply(function(x) return x*(R_wrt_Wfh + R1_wrt_Wfh) end)
     else
         dR_dWfh:apply(function(x) return x*R_wrt_Wfh end)
@@ -248,6 +250,7 @@ function tregutils.gradchecker_Wcih(dR_dWcih, vartbl)
     local R1_wrt_Wcih = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Wcih
 
     if (vartbl.not_rho_h_sq <= 0.0) then
+        print('need to use the the R1 constrain')
         dR_dWcih:apply(function(x) return x*(R_wrt_Wcih + R1_wrt_Wcih) end)
     else
         dR_dWcih:apply(function(x) return x*R_wrt_Wcih end)
@@ -268,12 +271,15 @@ function tregutils.gradchecker_Woh(dR_dWoh, vartbl)
     local R2_wrt_Woh = tregutils.consts.lambda2*(tregutils.consts.beta/vartbl.norm_W_oh)
 
     if (vartbl.not_rho_h_sq <= 0.0) and (tregutils.consts.beta*vartbl.norm_W_oh >= 1.0) then
+        print('need to use R1 and R2 constrains')
         dR_dWoh:apply(function(x) return x*(R_wrt_Woh + R1_wrt_Woh + R2_wrt_Woh) end)
     end
     if (vartbl.not_rho_h_sq <= 0.0) then
+        print('need to use the R1 constrain')
         dR_dWoh:apply(function(x) return x*(R_wrt_Woh + R1_wrt_Woh) end)
     end
     if (tregutils.consts.beta*vartbl.norm_W_oh >= 1.0) then
+        print('need to use the R2 constrain')
         dR_dWoh:apply(function(x) return x*(R_wrt_Woh + R2_wrt_Woh) end)
     end
     if (tregutils.consts.beta*vartbl.norm_W_oh < 1.0) and (vartbl.not_rho_h_sq > 0.0) then
