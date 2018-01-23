@@ -273,14 +273,17 @@ function tregutils.gradchecker_Woh(dR_dWoh, vartbl)
     if (vartbl.not_rho_h_sq <= 0.0) and (tregutils.consts.beta*vartbl.norm_W_oh >= 1.0) then
         print('Woh: need to use R1 and R2 constraints')
         dR_dWoh:apply(function(x) return x*(R_wrt_Woh + R1_wrt_Woh + R2_wrt_Woh) end)
+        return
     end
     if (vartbl.not_rho_h_sq <= 0.0) then
         print('Woh: need to use the R1 constraint')
         dR_dWoh:apply(function(x) return x*(R_wrt_Woh + R1_wrt_Woh) end)
+        return
     end
     if (tregutils.consts.beta*vartbl.norm_W_oh >= 1.0) then
         print('Woh: need to use the R2 constraint')
         dR_dWoh:apply(function(x) return x*(R_wrt_Woh + R2_wrt_Woh) end)
+        return
     end
     if (tregutils.consts.beta*vartbl.norm_W_oh < 1.0) and (vartbl.not_rho_h_sq > 0.0) then
         dR_dWoh:apply(function(x) return x*R_wrt_Woh end)
