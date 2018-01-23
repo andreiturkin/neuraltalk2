@@ -11,8 +11,8 @@ tregutils.consts = {
     sqrt2 = math.sqrt(2.0),
     alpha = 0.25,
     beta = 17.0/16.0,
-    lambda1 = 0.0005,
-    lambda2 = 0.0001,
+    lambda1 = 0.00005,
+    lambda2 = 0.00001,
     lambdaval = 0.00005,
 }
 
@@ -36,12 +36,12 @@ function tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o)
     vartbl.gamma_h = tregutils.consts.alpha*vartbl.norm_W_fh +
                      tregutils.consts.beta*(vartbl.norm_W_ih + vartbl.norm_W_cih)
 
-    vartbl.invu = math.exp(tregutils.consts.beta*vartbl.norm_W_oh - 1.0)
+    vartbl.cexp_Woh = math.exp(1.0-tregutils.consts.beta*vartbl.norm_W_oh)
+    vartbl.invu = 1.0/vartbl.cexp_Woh
     vartbl.rho_x = tregutils.consts.sqrt2*vartbl.gamma_x +
                    2.0*vartbl.invu*(tregutils.consts.beta*vartbl.gamma_x*vartbl.norm_W_oh + vartbl.norm_W_ox)
     vartbl.rho_h = tregutils.consts.sqrt2*vartbl.gamma_h +
                    tregutils.consts.sqrt2*vartbl.invu*tregutils.consts.beta*vartbl.gamma_h*vartbl.norm_W_oh
-    vartbl.cexp_Woh = math.exp(1.0-tregutils.consts.beta*vartbl.norm_W_oh)
     vartbl.not_rho_h_sq = 1.0 - math.pow(vartbl.rho_h,2)
 
     return vartbl
@@ -186,12 +186,11 @@ end
 function tregutils.gradchecker_Wix(dR_dWix, vartbl)
 
     local rho_x_prime_Wix = (tregutils.consts.sqrt2*tregutils.consts.beta/vartbl.norm_W_ix)*
-            (1.0 + (tregutils.consts.sqrt2*tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
+                            (1.0 + (tregutils.consts.sqrt2*tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
     local R_wrt_Wix = 2.0*tregutils.consts.lambdaval*vartbl.rho_x*rho_x_prime_Wix/vartbl.not_rho_h_sq
 
     dR_dWix:apply(function(x) return x*R_wrt_Wix end)
 end
-
 
 function tregutils.gradchecker_Wfx(dR_dWfx, vartbl)
 
@@ -227,8 +226,10 @@ function tregutils.gradchecker_Wih(dR_dWih, vartbl)
     local rho_h_prime_Wih = (tregutils.consts.sqrt2*tregutils.consts.beta/vartbl.norm_W_ih)*
             (1.0 + (tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
     local R_wrt_Wih = 2.0*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wih/math.pow(vartbl.not_rho_h_sq,2)
+    local R1_wrt_Wih = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Wih
+
     if (vartbl.not_rho_h_sq <= 0.0) then
-        dR_dWih:apply(function(x) return x*R_wrt_Wih + tregutils.consts.lambda1*2.0*vartbl.rho_h*rho_h_prime_Wih*x end)
+        dR_dWih:apply(function(x) return x*(R_wrt_Wih + R1_wrt_Wih) end)
     else
         dR_dWih:apply(function(x) return x*R_wrt_Wih end)
     end
@@ -240,8 +241,10 @@ function tregutils.gradchecker_Wfh(dR_dWfh, vartbl)
             (1.0 + (tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
 
     local R_wrt_Wfh = 2.0*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wfh/math.pow(vartbl.not_rho_h_sq,2)
+    local R1_wrt_Wfh = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Wfh
+
     if (vartbl.not_rho_h_sq <= 0.0) then
-        dR_dWfh:apply(function(x) return x*R_wrt_Wfh + tregutils.consts.lambda1*2.0*vartbl.rho_h*rho_h_prime_Wfh*x end)
+        dR_dWfh:apply(function(x) return x*(R_wrt_Wfh + R1_wrt_Wfh) end)
     else
         dR_dWfh:apply(function(x) return x*R_wrt_Wfh end)
     end
@@ -253,8 +256,10 @@ function tregutils.gradchecker_Wcih(dR_dWcih, vartbl)
             (1.0 + (tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
 
     local R_wrt_Wcih = 2.0*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wcih/math.pow(vartbl.not_rho_h_sq,2)
+    local R1_wrt_Wcih = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Wcih
+
     if (vartbl.not_rho_h_sq <= 0.0) then
-        dR_dWcih:apply(function(x) return x*R_wrt_Wcih + tregutils.consts.lambda1*2.0*vartbl.rho_h*rho_h_prime_Wcih*x end)
+        dR_dWcih:apply(function(x) return x*(R_wrt_Wcih + R1_wrt_Wcih) end)
     else
         dR_dWcih:apply(function(x) return x*R_wrt_Wcih end)
     end
@@ -270,16 +275,17 @@ function tregutils.gradchecker_Woh(dR_dWoh, vartbl)
     local num = vartbl.rho_x*vartbl.not_rho_h_sq*rho_x_prime_Woh +
                 math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Woh
     local R_wrt_Woh = 2.0*tregutils.consts.lambdaval*num/math.pow(vartbl.not_rho_h_sq,2)
+    local R1_wrt_Woh = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Woh
+    local R2_wrt_Woh = tregutils.consts.lambda2*(tregutils.consts.beta/vartbl.norm_W_oh)
 
     if (vartbl.not_rho_h_sq <= 0.0) and (tregutils.consts.beta*vartbl.norm_W_oh >= 1.0) then
-        dR_dWoh:apply(function(x) return x*R_wrt_Woh + tregutils.consts.lambda1*2.0*vartbl.rho_h*rho_h_prime_Woh*x +
-                                         tregutils.consts.lambda2*(tregutils.consts.beta/vartbl.norm_W_oh)*x end)
+        dR_dWoh:apply(function(x) return x*(R_wrt_Woh + R1_wrt_Woh + R2_wrt_Woh) end)
     end
     if (vartbl.not_rho_h_sq <= 0.0) then
-        dR_dWoh:apply(function(x) return x*R_wrt_Woh + tregutils.consts.lambda1*2.0*vartbl.rho_h*rho_h_prime_Woh*x end)
+        dR_dWoh:apply(function(x) return x*(R_wrt_Woh + R1_wrt_Woh) end)
     end
     if (tregutils.consts.beta*vartbl.norm_W_oh >= 1.0) then
-        dR_dWoh:apply(function(x) return x*R_wrt_Woh + tregutils.consts.lambda2*(tregutils.consts.beta/vartbl.norm_W_oh)*x end)
+        dR_dWoh:apply(function(x) return x*(R_wrt_Woh + R2_wrt_Woh) end)
     end
     if (tregutils.consts.beta*vartbl.norm_W_oh < 1.0) and (vartbl.not_rho_h_sq > 0.0) then
         dR_dWoh:apply(function(x) return x*R_wrt_Woh end)
