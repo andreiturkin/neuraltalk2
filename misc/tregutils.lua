@@ -11,9 +11,9 @@ tregutils.consts = {
     sqrt2 = math.sqrt(2.0),
     alpha = 0.25,
     beta = 17.0/16.0,
-    lambda1 = 0.05,
-    lambda2 = 0.01,
-    lambdaval = 0.05,
+    lambda1 = 0.0005,
+    lambda2 = 0.0001,
+    lambdaval = 0.00005,
 }
 
 function tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o)
