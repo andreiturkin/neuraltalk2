@@ -11,9 +11,9 @@ tregutils.consts = {
     sqrt2 = math.sqrt(2.0),
     alpha = 0.25,
     beta = 17.0/16.0,
-    lambda1 = 0.0001,
-    lambda2 = 0.0001,
-    lambdaval = 0.000005,
+    lambda1 = 0.0,
+    lambda2 = 0.0,
+    lambdaval = 0.0,
 }
 
 function tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o)
@@ -294,6 +294,11 @@ function tregutils.gettreggrads(params, thin_lm, opt)
     tregutils.add_to_grad_params = params:clone()
     tregutils.getgradparams(opt, thin_lm)
     assert(tregutils.add_to_grad_params:nElement() == params:nElement())
+    print('parameters: %f, %f, %f', tregutils.consts.lambdaval, tregutils.consts.lambda1, tregutils.consts.lambda2)
+    if(tregutils.consts.lambdaval == 0.0 and tregutils.consts.lambda1 == 0.0 and tregutils.consts.lambda2 == 0.0) then
+        print('all lambdas are zeros')
+        assert(torch.sum(tregutils.add_to_grad_params)==0)
+    end
 end
 
 return tregutils
