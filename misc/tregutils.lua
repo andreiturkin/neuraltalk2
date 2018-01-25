@@ -167,6 +167,12 @@ function tregutils.getgradparams(opt, thin_lm)
 
     local LSTMparam6 = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 4*opt.rnn_size + 1, opt.rnn_size*vocab_size + 1, vocab_size)
     LSTMparam6:zero()
+
+    --all others
+    local from = 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 4*opt.rnn_size + 1, opt.rnn_size*vocab_size + vocab_size
+    local size = tregutils.add_to_grad_params:size(1) - from
+    local LSTMparam7 = tregutils.add_to_grad_params:narrow(1, from + 1, size)
+    LSTMparam7:zero()
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -294,9 +300,9 @@ function tregutils.gettreggrads(params, thin_lm, opt)
     tregutils.add_to_grad_params = params:clone()
     tregutils.getgradparams(opt, thin_lm)
     assert(tregutils.add_to_grad_params:nElement() == params:nElement())
-    print('parameters: %f, %f, %f', tregutils.consts.lambdaval, tregutils.consts.lambda1, tregutils.consts.lambda2)
+    print(string.format('parameters: L=%f, L1=%f, L2=%f', tregutils.consts.lambdaval, tregutils.consts.lambda1, tregutils.consts.lambda2))
     if(tregutils.consts.lambdaval == 0.0 and tregutils.consts.lambda1 == 0.0 and tregutils.consts.lambda2 == 0.0) then
-        print('all lambdas are zeros')
+        print('All lambdas are zeros')
         assert(torch.sum(tregutils.add_to_grad_params)==0)
     end
 end
