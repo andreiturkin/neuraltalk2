@@ -11,12 +11,12 @@ tregutils.consts = {
     sqrt2 = math.sqrt(2.0),
     alpha = 0.25,
     beta = 17.0/16.0,
-    lambda1 = 0.0,
-    lambda2 = 0.0,
-    lambdaval = 0.0,
+    lambda1 = 0.1,
+    lambda2 = 0.1,
+    lambdaval = 5e-7,
 }
 
-function tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o)
+function tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o, W_y)
     local vartbl = {}
 
     vartbl.norm_W_ix = math.sqrt(torch.sum(torch.pow(W_i, 2)))
@@ -30,6 +30,8 @@ function tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o)
 
     vartbl.norm_W_ox = math.sqrt(torch.sum(torch.pow(W_o, 2)))
     vartbl.norm_W_oh = math.sqrt(torch.sum(torch.pow(U_o, 2)))
+
+    vartbl.morm_W_oy = math.sqrt(torch.sum(torch.pow(W_y,2)))
 
     vartbl.gamma_x = tregutils.consts.alpha*vartbl.norm_W_fx +
                      tregutils.consts.beta*(vartbl.norm_W_ix + vartbl.norm_W_cix)
@@ -146,8 +148,8 @@ function tregutils.getgradparams(opt, thin_lm)
     local LSTMparam4 = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 1, 4*opt.rnn_size)
     LSTMparam4:zero()
 
-    local vartbl = tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o)
-    tregutils.checking(thin_lm, opt, W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o)
+    local vartbl = tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o, W_y)
+    tregutils.checking(thin_lm, opt, W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o, W_y)
     -- Derivative calculation
     -- They replace the parameters that are in tregutils.add_to_grad_params
     tregutils.gradchecker_Wix(W_i, vartbl)
@@ -163,7 +165,8 @@ function tregutils.getgradparams(opt, thin_lm)
     --LSTM output + bias (we don't need it, but need to be sure the grad elements are zeros)
     local vocab_size = 9568
     local LSTMparam5 = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 4*opt.rnn_size + 1, opt.rnn_size*vocab_size)
-    LSTMparam5:zero()
+    --tregutils.gradchecker_Woy(LSTMparam5, vartbl)    
+    LSTMparam5:zero()    
 
     local LSTMparam6 = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 4*opt.rnn_size + 1, opt.rnn_size*vocab_size + 1, vocab_size)
     LSTMparam6:zero()
@@ -294,6 +297,12 @@ function tregutils.gradchecker_Woh(dR_dWoh, vartbl)
     if (tregutils.consts.beta*vartbl.norm_W_oh < 1.0) and (vartbl.not_rho_h_sq > 0.0) then
         dR_dWoh:apply(function(x) return x*R_wrt_Woh end)
     end
+end
+
+function tregutils.gradchecker_Woy(dR_dWoy, vartbl)
+
+    local R_wrt_Woy = 2.0*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)/vartbl.not_rho_h_sq
+    dR_dWoy:apply(function(x) return x*R_wrt_Woy end)
 end
 
 function tregutils.gettreggrads(params, thin_lm, opt)
