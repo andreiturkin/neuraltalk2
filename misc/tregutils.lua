@@ -31,7 +31,7 @@ function tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o, W_y)
     vartbl.norm_W_ox = math.sqrt(torch.sum(torch.pow(W_o, 2)))
     vartbl.norm_W_oh = math.sqrt(torch.sum(torch.pow(U_o, 2)))
 
-    vartbl.morm_W_oy = math.sqrt(torch.sum(torch.pow(W_y,2)))
+    vartbl.morm_W_oy_sq = torch.sum(torch.pow(W_y,2))
 
     vartbl.gamma_x = tregutils.consts.alpha*vartbl.norm_W_fx +
                      tregutils.consts.beta*(vartbl.norm_W_ix + vartbl.norm_W_cix)
@@ -47,80 +47,6 @@ function tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o, W_y)
     vartbl.not_rho_h_sq = 1.0 - math.pow(vartbl.rho_h,2)
 
     return vartbl
-end
-
-function tregutils.getparameters(params, thin_lm, opt)
-    local LSTMparam = {}
-    -- LSTM W
-    local LSTMparam1 = params:narrow(1, 1, 4*opt.input_encoding_size*opt.rnn_size)
-    local W_i = LSTMparam1:narrow(1, 1, opt.input_encoding_size*opt.rnn_size)
-    local W_f = LSTMparam1:narrow(1, opt.input_encoding_size*opt.rnn_size + 1, opt.input_encoding_size*opt.rnn_size)
-    local W_o = LSTMparam1:narrow(1, 2*opt.input_encoding_size*opt.rnn_size + 1, opt.input_encoding_size*opt.rnn_size)
-    local W_c = LSTMparam1:narrow(1, 3*opt.input_encoding_size*opt.rnn_size + 1, opt.input_encoding_size*opt.rnn_size)
-    LSTMparam['W_i'] = W_i
-    LSTMparam['W_f'] = W_f
-    LSTMparam['W_o'] = W_o
-    LSTMparam['W_c'] = W_c
-
-    -- LSTM W bias (we don't need it)
-    --LSTMparam2 = params:narrow(1, 2048*512+1, 2048)
-
-    -- LSTM U
-    local LSTMparam3 = params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 1, 4*opt.rnn_size*opt.rnn_size)
-    local U_i = LSTMparam3:narrow(1, 1, opt.rnn_size*opt.rnn_size)
-    local U_f = LSTMparam3:narrow(1, opt.rnn_size*opt.rnn_size + 1, opt.rnn_size*opt.rnn_size)
-    local U_o = LSTMparam3:narrow(1, 2*opt.rnn_size*opt.rnn_size + 1, opt.rnn_size*opt.rnn_size)
-    local U_c = LSTMparam3:narrow(1, 3*opt.rnn_size*opt.rnn_size + 1, opt.rnn_size*opt.rnn_size)
-    LSTMparam['U_i'] = U_i
-    LSTMparam['U_f'] = U_f
-    LSTMparam['U_o'] = U_o
-    LSTMparam['U_c'] = U_c
-    -- LSTM U bias (we don't need it)
-    --LSTMparam4 = params:narrow(1, 2048*512+2048+2048*512+1, 2048)
-    --
-    --LSTM output + bias (we don't need it)
-    --LSTMparam5 = params:narrow(1, 2048*512+2048+2048*512+2048+1, 9568*512)
-    --LSTMparam6 = params:narrow(1, 2048*512+2048+2048*512+2048+9568*512+1, 9568)
-
-    --print('LSTM parameters from params:')
-    --print(LSTMparam)
-    -- Checking whether or not we get what we wanted to
-    tregutils.getparameters_checking(thin_lm, LSTMparam, opt)
-
-    return LSTMparam
-end
-
-function tregutils.checking(thin_lm, opt, iW_i, iU_i, iW_f, iU_f, iW_c, iU_c, iW_o, iU_o)
-    -- Parameters from the layer
-    local W_i, W_f, W_o, W_c, U_i, U_f, U_o, U_c
-    -- Getting Language Model Parameters
-    local p1,_ = thin_lm.core:parameters()
-    --W_size = (ipt_size) x (4 * rnn_size)
-    --U_size = (rnn_size) x (4 * rnn_size)
-    for i, v in pairs(p1) do
-        if i == 1 then
-            W_i = v:sub(1,opt.rnn_size)
-            W_f = v:sub(opt.rnn_size+1,2*opt.rnn_size)
-            W_o = v:sub(2*opt.rnn_size+1,3*opt.rnn_size)
-            W_c = v:sub(3*opt.rnn_size+1,4*opt.rnn_size)
-        end
-        if i == 3 then
-            U_i = v:sub(1,opt.rnn_size)
-            U_f = v:sub(opt.rnn_size+1,2*opt.rnn_size)
-            U_o = v:sub(2*opt.rnn_size+1,3*opt.rnn_size)
-            U_c = v:sub(3*opt.rnn_size+1,4*opt.rnn_size)
-        end
-    end
-    ---- W
-    assert(torch.all(W_i:eq(iW_i))and
-            torch.all(W_f:eq(iW_f))and
-            torch.all(W_o:eq(iW_o))and
-            torch.all(W_c:eq(iW_c)))
-    ---- U
-    assert(torch.all(U_i:eq(iU_i))and
-            torch.all(U_f:eq(iU_f))and
-            torch.all(U_o:eq(iU_o))and
-            torch.all(U_c:eq(iU_c)))
 end
 
 --
@@ -148,8 +74,17 @@ function tregutils.getgradparams(opt, thin_lm)
     local LSTMparam4 = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 1, 4*opt.rnn_size)
     LSTMparam4:zero()
 
+    --LSTM output + bias (we don't need it, but need to be sure the grad elements are zeros)
+    local vocab_size = 9568
+    local W_y = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 4*opt.rnn_size + 1, opt.rnn_size*vocab_size)
+    -- W_y:zero()
+
+    local b_y = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 4*opt.rnn_size + opt.rnn_size*vocab_size + 1, vocab_size)
+    b_y:zero()
+
     local vartbl = tregutils.getvars(W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o, W_y)
     tregutils.checking(thin_lm, opt, W_i, U_i, W_f, U_f, W_c, U_c, W_o, U_o, W_y)
+
     -- Derivative calculation
     -- They replace the parameters that are in tregutils.add_to_grad_params
     tregutils.gradchecker_Wix(W_i, vartbl)
@@ -162,20 +97,51 @@ function tregutils.getgradparams(opt, thin_lm)
     tregutils.gradchecker_Wcih(U_c, vartbl)
     tregutils.gradchecker_Woh(U_o, vartbl)
 
-    --LSTM output + bias (we don't need it, but need to be sure the grad elements are zeros)
-    local vocab_size = 9568
-    local LSTMparam5 = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 4*opt.rnn_size + 1, opt.rnn_size*vocab_size)
-    --tregutils.gradchecker_Woy(LSTMparam5, vartbl)    
-    LSTMparam5:zero()    
-
-    local LSTMparam6 = tregutils.add_to_grad_params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 4*opt.rnn_size + 1, opt.rnn_size*vocab_size + 1, vocab_size)
-    LSTMparam6:zero()
+    tregutils.gradchecker_Woy(W_y, vartbl)
 
     --all others
     local from = 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 4*opt.rnn_size*opt.rnn_size + 4*opt.rnn_size + 1, opt.rnn_size*vocab_size + vocab_size
     local size = tregutils.add_to_grad_params:size(1) - from
-    local LSTMparam7 = tregutils.add_to_grad_params:narrow(1, from + 1, size)
-    LSTMparam7:zero()
+    local LT = tregutils.add_to_grad_params:narrow(1, from + 1, size)
+    LT:zero()
+end
+
+function tregutils.checking(thin_lm, opt, iW_i, iU_i, iW_f, iU_f, iW_c, iU_c, iW_o, iU_o, iW_y)
+    -- Parameters from the layer
+    local W_i, W_f, W_o, W_c, U_i, U_f, U_o, U_c, W_y
+    -- Getting Language Model Parameters
+    local p1,_ = thin_lm.core:parameters()
+    --W_size = (ipt_size) x (4 * rnn_size)
+    --U_size = (rnn_size) x (4 * rnn_size)
+    for i, v in pairs(p1) do
+        if i == 1 then
+            W_i = v:sub(1,opt.rnn_size)
+            W_f = v:sub(opt.rnn_size+1,2*opt.rnn_size)
+            W_o = v:sub(2*opt.rnn_size+1,3*opt.rnn_size)
+            W_c = v:sub(3*opt.rnn_size+1,4*opt.rnn_size)
+        end
+        if i == 3 then
+            U_i = v:sub(1,opt.rnn_size)
+            U_f = v:sub(opt.rnn_size+1,2*opt.rnn_size)
+            U_o = v:sub(2*opt.rnn_size+1,3*opt.rnn_size)
+            U_c = v:sub(3*opt.rnn_size+1,4*opt.rnn_size)
+        end
+        if i == 5 then
+            W_y = v
+        end
+    end
+    ---- W
+    assert(torch.all(W_i:eq(iW_i))and
+            torch.all(W_f:eq(iW_f))and
+            torch.all(W_o:eq(iW_o))and
+            torch.all(W_c:eq(iW_c)))
+    ---- U
+    assert(torch.all(U_i:eq(iU_i))and
+            torch.all(U_f:eq(iU_f))and
+            torch.all(U_o:eq(iU_o))and
+            torch.all(U_c:eq(iU_c)))
+    ---- Y
+    assert(torch.all(W_y:eq(iW_y)))
 end
 
 ------------------------------------------------------------------------------------------------------------------------
@@ -185,7 +151,7 @@ function tregutils.gradchecker_Wix(dR_dWix, vartbl)
 
     local rho_x_prime_Wix = (tregutils.consts.sqrt2*tregutils.consts.beta/vartbl.norm_W_ix)*
                             (1.0 + (tregutils.consts.sqrt2*tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
-    local R_wrt_Wix = 2.0*tregutils.consts.lambdaval*vartbl.rho_x*rho_x_prime_Wix/vartbl.not_rho_h_sq
+    local R_wrt_Wix = 2.0*vartbl.morm_W_oy_sq*tregutils.consts.lambdaval*vartbl.rho_x*rho_x_prime_Wix/vartbl.not_rho_h_sq
 
     dR_dWix:apply(function(x) return x*R_wrt_Wix end)
 end
@@ -194,7 +160,7 @@ function tregutils.gradchecker_Wfx(dR_dWfx, vartbl)
 
     local rho_x_prime_Wfx = (tregutils.consts.sqrt2*tregutils.consts.alpha/vartbl.norm_W_fx)*
                             (1.0 + (tregutils.consts.sqrt2*tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
-    local R_wrt_Wfx = 2.0*tregutils.consts.lambdaval*vartbl.rho_x*rho_x_prime_Wfx/vartbl.not_rho_h_sq
+    local R_wrt_Wfx = 2.0*vartbl.morm_W_oy_sq*tregutils.consts.lambdaval*vartbl.rho_x*rho_x_prime_Wfx/vartbl.not_rho_h_sq
 
     dR_dWfx:apply(function(x) return x*R_wrt_Wfx end)
 end
@@ -203,7 +169,7 @@ function tregutils.gradchecker_Wcix(dR_dWcix, vartbl)
 
     local rho_x_prime_Wcix = (tregutils.consts.sqrt2*tregutils.consts.beta/vartbl.norm_W_cix)*
                              (1.0 + (tregutils.consts.sqrt2*tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
-    local R_wrt_Wcix = 2.0*tregutils.consts.lambdaval*vartbl.rho_x*rho_x_prime_Wcix/vartbl.not_rho_h_sq
+    local R_wrt_Wcix = 2.0*vartbl.morm_W_oy_sq*tregutils.consts.lambdaval*vartbl.rho_x*rho_x_prime_Wcix/vartbl.not_rho_h_sq
 
     dR_dWcix:apply(function(x) return x*R_wrt_Wcix end)
 end
@@ -211,7 +177,7 @@ end
 function tregutils.gradchecker_Wox(dR_dWox, vartbl)
 
     local rho_x_prime_Wox = 2.0/(vartbl.norm_W_oh*vartbl.cexp_Woh)
-    local R_wrt_Wox = 2.0*tregutils.consts.lambdaval*vartbl.rho_x*rho_x_prime_Wox/vartbl.not_rho_h_sq
+    local R_wrt_Wox = 2.0*vartbl.morm_W_oy_sq*tregutils.consts.lambdaval*vartbl.rho_x*rho_x_prime_Wox/vartbl.not_rho_h_sq
 
     dR_dWox:apply(function(x) return x*R_wrt_Wox end)
 end
@@ -223,7 +189,7 @@ function tregutils.gradchecker_Wih(dR_dWih, vartbl)
 
     local rho_h_prime_Wih = (tregutils.consts.sqrt2*tregutils.consts.beta/vartbl.norm_W_ih)*
             (1.0 + (tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
-    local R_wrt_Wih = 2.0*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wih/math.pow(vartbl.not_rho_h_sq,2)
+    local R_wrt_Wih = 2.0*vartbl.morm_W_oy_sq*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wih/math.pow(vartbl.not_rho_h_sq,2)
     local R1_wrt_Wih = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Wih
 
     if (vartbl.not_rho_h_sq <= 0.0) then
@@ -239,7 +205,7 @@ function tregutils.gradchecker_Wfh(dR_dWfh, vartbl)
     local rho_h_prime_Wfh = (tregutils.consts.sqrt2*tregutils.consts.alpha/vartbl.norm_W_fh)*
             (1.0 + (tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
 
-    local R_wrt_Wfh = 2.0*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wfh/math.pow(vartbl.not_rho_h_sq,2)
+    local R_wrt_Wfh = 2.0*vartbl.morm_W_oy_sq*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wfh/math.pow(vartbl.not_rho_h_sq,2)
     local R1_wrt_Wfh = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Wfh
 
     if (vartbl.not_rho_h_sq <= 0.0) then
@@ -255,7 +221,7 @@ function tregutils.gradchecker_Wcih(dR_dWcih, vartbl)
     local rho_h_prime_Wcih = (tregutils.consts.sqrt2*tregutils.consts.beta/vartbl.norm_W_cih)*
             (1.0 + (tregutils.consts.beta*vartbl.norm_W_oh)/vartbl.cexp_Woh)
 
-    local R_wrt_Wcih = 2.0*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wcih/math.pow(vartbl.not_rho_h_sq,2)
+    local R_wrt_Wcih = 2.0*vartbl.morm_W_oy_sq*tregutils.consts.lambdaval*math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Wcih/math.pow(vartbl.not_rho_h_sq,2)
     local R1_wrt_Wcih = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Wcih
 
     if (vartbl.not_rho_h_sq <= 0.0) then
@@ -275,7 +241,7 @@ function tregutils.gradchecker_Woh(dR_dWoh, vartbl)
     
     local num = vartbl.rho_x*vartbl.not_rho_h_sq*rho_x_prime_Woh +
                 math.pow(vartbl.rho_x,2)*vartbl.rho_h*rho_h_prime_Woh
-    local R_wrt_Woh = 2.0*tregutils.consts.lambdaval*num/math.pow(vartbl.not_rho_h_sq,2)
+    local R_wrt_Woh = 2.0*vartbl.morm_W_oy_sq*tregutils.consts.lambdaval*num/math.pow(vartbl.not_rho_h_sq,2)
     local R1_wrt_Woh = 2.0*tregutils.consts.lambda1*vartbl.rho_h*rho_h_prime_Woh
     local R2_wrt_Woh = tregutils.consts.lambda2*(tregutils.consts.beta/vartbl.norm_W_oh)
 
@@ -317,3 +283,44 @@ function tregutils.gettreggrads(params, thin_lm, opt)
 end
 
 return tregutils
+
+--function tregutils.getparameters(params, thin_lm, opt)
+--    local LSTMparam = {}
+--    -- LSTM W
+--    local LSTMparam1 = params:narrow(1, 1, 4*opt.input_encoding_size*opt.rnn_size)
+--    local W_i = LSTMparam1:narrow(1, 1, opt.input_encoding_size*opt.rnn_size)
+--    local W_f = LSTMparam1:narrow(1, opt.input_encoding_size*opt.rnn_size + 1, opt.input_encoding_size*opt.rnn_size)
+--    local W_o = LSTMparam1:narrow(1, 2*opt.input_encoding_size*opt.rnn_size + 1, opt.input_encoding_size*opt.rnn_size)
+--    local W_c = LSTMparam1:narrow(1, 3*opt.input_encoding_size*opt.rnn_size + 1, opt.input_encoding_size*opt.rnn_size)
+--    LSTMparam['W_i'] = W_i
+--    LSTMparam['W_f'] = W_f
+--    LSTMparam['W_o'] = W_o
+--    LSTMparam['W_c'] = W_c
+--
+--    -- LSTM W bias (we don't need it)
+--    --LSTMparam2 = params:narrow(1, 2048*512+1, 2048)
+--
+--    -- LSTM U
+--    local LSTMparam3 = params:narrow(1, 4*opt.input_encoding_size*opt.rnn_size + 4*opt.rnn_size + 1, 4*opt.rnn_size*opt.rnn_size)
+--    local U_i = LSTMparam3:narrow(1, 1, opt.rnn_size*opt.rnn_size)
+--    local U_f = LSTMparam3:narrow(1, opt.rnn_size*opt.rnn_size + 1, opt.rnn_size*opt.rnn_size)
+--    local U_o = LSTMparam3:narrow(1, 2*opt.rnn_size*opt.rnn_size + 1, opt.rnn_size*opt.rnn_size)
+--    local U_c = LSTMparam3:narrow(1, 3*opt.rnn_size*opt.rnn_size + 1, opt.rnn_size*opt.rnn_size)
+--    LSTMparam['U_i'] = U_i
+--    LSTMparam['U_f'] = U_f
+--    LSTMparam['U_o'] = U_o
+--    LSTMparam['U_c'] = U_c
+--    -- LSTM U bias (we don't need it)
+--    --LSTMparam4 = params:narrow(1, 2048*512+2048+2048*512+1, 2048)
+--    --
+--    --LSTM output + bias (we don't need it)
+--    --LSTMparam5 = params:narrow(1, 2048*512+2048+2048*512+2048+1, 9568*512)
+--    --LSTMparam6 = params:narrow(1, 2048*512+2048+2048*512+2048+9568*512+1, 9568)
+--
+--    --print('LSTM parameters from params:')
+--    --print(LSTMparam)
+--    -- Checking whether or not we get what we wanted to
+--    tregutils.getparameters_checking(thin_lm, LSTMparam, opt)
+--
+--    return LSTMparam
+--end
